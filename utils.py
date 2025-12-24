@@ -32,13 +32,13 @@ def parse_srt_blocks(content):
     time_pattern = r'^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$'
     for line in content.splitlines():
         stripped = line.strip()
-        if re.match(r'^\d+$', stripped) and current_block:  # 숫자 라인: 새 블록
-            if any(re.match(time_pattern, l.strip()) for l in current_block[1:]):  # 타임스탬프 있는지 확인 (빈 블록 무시)
-                blocks.append('\n'.join(current_block) + '\n')
-            current_block = [line]
-        else:
+        if stripped:
             current_block.append(line)
-    if current_block and any(re.match(time_pattern, l.strip()) for l in current_block[1:]):
+        else:
+            if current_block and re.match(r'^\d+$', current_block[0].strip()) and any(re.match(time_pattern, l.strip()) for l in current_block[1:]):
+                blocks.append('\n'.join(current_block) + '\n')
+            current_block = []
+    if current_block and re.match(r'^\d+$', current_block[0].strip()) and any(re.match(time_pattern, l.strip()) for l in current_block[1:]):
         blocks.append('\n'.join(current_block) + '\n')
     return blocks
 
@@ -48,53 +48,12 @@ def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
     else:
         return Path(default_linux)
 
-# 수정된 clean_trans_text: for 루프로 변경하여 자기 참조 피함, 연속 빈 라인 한 줄로 보정, 블록 끝 빈 라인 한 개 추가
 def clean_trans_text(text):
-    """번역된 텍스트에서 불필요한 문구 제거: 'text', 'srt', 'assistant: ', '다음 내용을 참조하세요:' 등. 공백 처리 안 된 경우 수정."""
-    patterns = [r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    patterns = [r'text', r'srt', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-    
-    # 빈 라인 정리: 연속 빈 라인을 한 줄로 줄임
-    lines = []
-    last_was_empty = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped:
-            lines.append(line)
-            last_was_empty = False
-        else:
-            if not last_was_empty:
-                lines.append('')
-                last_was_empty = True
-    
-    # 블록 파싱 후 재구성: 각 블록 끝에 빈 라인 한 개만 추가
-    blocks = parse_srt_blocks('\n'.join(lines))  # 정리된 lines로 파싱
-    cleaned_blocks = []
-    for block in blocks:
-        block_lines = []
-        last_was_empty_block = False
-        for line in block.splitlines():
-            stripped = line.strip()
-            if stripped:
-                block_lines.append(line)
-                last_was_empty_block = False
-            else:
-                if not last_was_empty_block:
-                    block_lines.append('')
-                    last_was_empty_block = True
-        # 블록 끝에 빈 라인 한 개 추가 (이미 있으면 중복 피함)
-        if block_lines and block_lines[-1].strip():
-            block_lines.append('')
-        cleaned_blocks.append('\n'.join(block_lines))
-    
-    final_output = '\n'.join(cleaned_blocks)
-    return final_output
-
-# trim 관련 함수들 유지 (생략: sniff_encoding, read_text_preserve_encoding 등)
-UTF8_BOM = b"\xef\xbb\xbf"
-UTF16_LE_BOM = b"\xff\xfe"
-UTF16_BE_BOM = b"\xfe\xff"
+    lines = [line.strip() for line in text.splitlines() if line.strip() or (lines and lines[-1].strip())]
+    return '\n'.join(lines) + '\n'  # 마지막 빈 라인 유지
 
 def sniff_encoding(path: Path) -> str:
     with path.open("rb") as f:
