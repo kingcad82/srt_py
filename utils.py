@@ -51,7 +51,7 @@ def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
 # 수정된 clean_trans_text: for 루프로 변경하여 자기 참조 피함, 연속 빈 라인 한 줄로 보정, 블록 끝 빈 라인 한 개 추가
 def clean_trans_text(text):
     """번역된 텍스트에서 불필요한 문구 제거: 'text', 'srt', 'assistant: ', '다음 내용을 참조하세요:' 등. 공백 처리 안 된 경우 수정."""
-    patterns = [r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    patterns = [r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
     
