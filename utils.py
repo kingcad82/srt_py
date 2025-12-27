@@ -4,6 +4,7 @@ from pathlib import Path
 import platform
 import codecs
 
+# 기존 함수들 유지 (생략 표시)
 def get_base_filename(filename):
     """SRT 파일의 base_filename을 반환합니다. chunk 번호 전에 첫 .까지의 문자열."""
     without_chunk = filename.split('_')[0]
@@ -48,53 +49,33 @@ def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
     else:
         return Path(default_linux)
 
-# 수정된 clean_trans_text: for 루프로 변경하여 자기 참조 피함, 연속 빈 라인 한 줄로 보정, 블록 끝 빈 라인 한 개 추가
 def clean_trans_text(text):
-    """번역된 텍스트에서 불필요한 문구 제거: 'text', 'srt', 'assistant: ', '다음 내용을 참조하세요:' 등. 공백 처리 안 된 경우 수정."""
-    patterns = [r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    patterns = [r'text', r'srt', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-    
-    # 빈 라인 정리: 연속 빈 라인을 한 줄로 줄임
-    lines = []
-    last_was_empty = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped:
-            lines.append(line)
-            last_was_empty = False
-        else:
-            if not last_was_empty:
-                lines.append('')
-                last_was_empty = True
-    
-    # 블록 파싱 후 재구성: 각 블록 끝에 빈 라인 한 개만 추가
-    blocks = parse_srt_blocks('\n'.join(lines))  # 정리된 lines로 파싱
-    cleaned_blocks = []
-    for block in blocks:
-        block_lines = []
-        last_was_empty_block = False
-        for line in block.splitlines():
-            stripped = line.strip()
-            if stripped:
-                block_lines.append(line)
-                last_was_empty_block = False
-            else:
-                if not last_was_empty_block:
-                    block_lines.append('')
-                    last_was_empty_block = True
-        # 블록 끝에 빈 라인 한 개 추가 (이미 있으면 중복 피함)
-        if block_lines and block_lines[-1].strip():
-            block_lines.append('')
-        cleaned_blocks.append('\n'.join(block_lines))
-    
-    final_output = '\n'.join(cleaned_blocks)
-    return final_output
+    lines = [line.strip() for line in text.splitlines() if line.strip() or (lines and lines[-1].strip())]
+    return '\n'.join(lines) + '\n'  # 마지막 빈 라인 유지
 
-# trim 관련 함수들 유지 (생략: sniff_encoding, read_text_preserve_encoding 등)
-UTF8_BOM = b"\xef\xbb\xbf"
-UTF16_LE_BOM = b"\xff\xfe"
-UTF16_BE_BOM = b"\xfe\xff"
+# 수정된 extract_numbers_times: 원본 번호/타임스탬프 추출 (list of (번호, 타임스탬프))
+def extract_numbers_times(blocks):
+    numbers_times = []
+    for block in blocks:
+        lines = block.splitlines()
+        if len(lines) >= 2 and re.match(r'^\d+$', lines[0].strip()) and re.match(r'^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', lines[1].strip()):
+            numbers_times.append((lines[0].strip(), lines[1].strip()))
+    return numbers_times
+
+# 수정된 extract_texts: 번역 대사 추출 (list of 대사 문자열, 빈 대사 ""로 처리)
+def extract_texts(blocks):
+    texts = []
+    for block in blocks:
+        lines = block.splitlines()
+        if len(lines) >= 2:
+            text = '\n'.join(lines[2:]).strip()  # 대사 부분 연결, 빈 대사 "" 반환
+            texts.append(text)
+        else:
+            texts.append("")  # 블록이 불완전하면 빈 값 추가
+    return texts
 
 def sniff_encoding(path: Path) -> str:
     with path.open("rb") as f:
