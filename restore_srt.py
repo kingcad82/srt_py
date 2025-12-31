@@ -1,4 +1,4 @@
-# restore_srt.py
+# restore_srt.py (수정: 노이즈 제거, 원본 헤더 추출, 번역 대사 추출, 병합 명확화)
 import argparse
 from pathlib import Path
 from utils import parse_srt_blocks, clean_trans_text, get_srt_home  # 공통 utils import
@@ -21,23 +21,19 @@ def restore_srt_file(file_path, origin_separate_dir, trans_separate_dir):
         with open(trans_file, 'r', encoding='utf-8') as f:
             trans_content = f.read()
         
-        # 불필요 문구만 제거 (빈 라인 유지)
+        # 1. 번역도구가 만든 노이즈 제거
         cleaned_trans = clean_trans_text(trans_content)
         
-        # 원본 블록 파싱
+        # 2. 원본에서 자막번호와 타임스탬프 추출
         origin_blocks = parse_srt_blocks(origin_content)
-        
-        # 원본 headers 배열: (num, time) tuples
         origin_headers = []
         for block in origin_blocks:
             lines = block.splitlines()
             if len(lines) >= 2:
                 origin_headers.append((lines[0].strip(), lines[1].strip()))
         
-        # 번역 블록 파싱 (cleaned, 빈 라인 유지)
+        # 3. 번역본에서 번역된 대사 추출
         trans_blocks = parse_srt_blocks(cleaned_trans)
-        
-        # 번역 대사 배열: 빈 포함, 중간 빈 라인 유지
         trans_texts = []
         for block in trans_blocks:
             lines = block.splitlines()
@@ -47,7 +43,7 @@ def restore_srt_file(file_path, origin_separate_dir, trans_separate_dir):
                 text = ''
             trans_texts.append(text)
         
-        # 병합: 원본 길이 기준
+        # 4. 2,3번 병합: 원본 길이 기준
         merged_blocks = []
         for i in range(len(origin_headers)):
             header_num, header_time = origin_headers[i]
