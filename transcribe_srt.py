@@ -1,9 +1,38 @@
-# transcribe_srt.py (수정: timestamp_to_srt → format_timestamp 사용)
+# transcribe_srt.py (수정: 영상 용량 추가, MB/GB 단위 출력)
 import argparse
 import whisper
+import time
+import subprocess
+import os
 from pathlib import Path
-from whisper.utils import format_timestamp  # 추가: 올바른 함수 import
+from whisper.utils import format_timestamp  # 타임스탬프 변환 import
 from utils import get_srt_home  # 공통 utils import
+
+def get_video_duration(video_path):
+    """FFmpeg로 비디오 재생 시간 추출 (초 단위, 호환성 위해 subprocess 사용)."""
+    try:
+        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', str(video_path)]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        duration = float(result.stdout.strip())
+        return duration
+    except Exception as e:
+        print(f"경고: 비디오 길이 추출 실패 - {e}. 기본값 0 사용.")
+        return 0.0
+
+def get_video_size(video_path):
+    """비디오 파일 크기 추출 (바이트 → MB/GB 변환)."""
+    try:
+        size_bytes = os.path.getsize(video_path)
+        if size_bytes >= 1024 * 1024 * 1024:
+            size_str = f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+        elif size_bytes >= 1024 * 1024:
+            size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
+        else:
+            size_str = f"{size_bytes / 1024:.2f} KB"
+        return size_str
+    except Exception as e:
+        print(f"경고: 비디오 크기 추출 실패 - {e}. 기본값 알 수 없음.")
+        return "알 수 없음"
 
 def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language='ja', output_dir=None):
     if output_dir is None:
@@ -20,6 +49,8 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
     
     print(f"추출 시작: {video_path}")
     
+    start_time = time.time()  # 추출 시간 측정 시작
+    
     try:
         # 모델 로드 (CUDA 자동 사용 if available)
         model = whisper.load_model(model_name)
@@ -30,15 +61,28 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         # SRT 형식 생성
         srt_content = []
         for i, segment in enumerate(result['segments'], start=1):
-            start = format_timestamp(segment['start'])  # 수정: format_timestamp 사용
-            end = format_timestamp(segment['end'])  # 수정: format_timestamp 사용
+            start = format_timestamp(segment['start'])
+            end = format_timestamp(segment['end'])
             text = segment['text'].strip()
             srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(''.join(srt_content).rstrip() + '\n\n')
         
+        end_time = time.time()  # 추출 시간 측정 종료
+        elapsed_time = end_time - start_time
+        
+        # 비디오 정보 추출
+        video_duration = get_video_duration(video_path)
+        video_size = get_video_size(video_path)
+        
+        # 출력: 재생 시간 (초 → HH:MM:SS), 용량 (MB/GB), 추출 시간 (초)
+        duration_str = format_timestamp(video_duration) if video_duration > 0 else "알 수 없음"
         print(f"추출 완료: {output_path} (모델: {model_name}, 언어: {language})")
+        print(f"영상 재생 시간: {duration_str}")
+        print(f"영상 용량: {video_size}")
+        print(f"추출 소요 시간: {elapsed_time:.2f} 초")
+        
         return True
     except Exception as e:
         print(f"오류: {video_path} - {e}")
