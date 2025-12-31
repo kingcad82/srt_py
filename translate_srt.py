@@ -1,61 +1,110 @@
-# translate_srt.py (새 파일: 테스트용 단일 SRT 번역)
+# transcribe_srt.py (수정: 영상 용량 추가, MB/GB 단위 출력)
 import argparse
+import whisper
+import time
+import subprocess
+import os
 from pathlib import Path
-from transformers import pipeline
-from utils import parse_srt_blocks, get_srt_home
+from whisper.utils import format_timestamp  # 타임스탬프 변환 import
+from utils import get_srt_home  # 공통 utils import
 
-def translate_text(text, src_lang='ja', tgt_lang='ko'):
-    """텍스트를 일본어 -> 한국어로 번역 (Helsinki-NLP 모델 사용)."""
-    translator = pipeline('translation', model='Helsinki-NLP/opus-mt-ja-ko')
-    return translator(text)[0]['translation_text']
+def get_video_duration(video_path):
+    """FFmpeg로 비디오 재생 시간 추출 (초 단위, 호환성 위해 subprocess 사용)."""
+    try:
+        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', str(video_path)]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        duration = float(result.stdout.strip())
+        return duration
+    except Exception as e:
+        print(f"경고: 비디오 길이 추출 실패 - {e}. 기본값 0 사용.")
+        return 0.0
 
-def translate_srt_file(file_path, output_dir=None):
+def get_video_size(video_path):
+    """비디오 파일 크기 추출 (바이트 → MB/GB 변환)."""
+    try:
+        size_bytes = os.path.getsize(video_path)
+        if size_bytes >= 1024 * 1024 * 1024:
+            size_str = f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+        elif size_bytes >= 1024 * 1024:
+            size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
+        else:
+            size_str = f"{size_bytes / 1024:.2f} KB"
+        return size_str
+    except Exception as e:
+        print(f"경고: 비디오 크기 추출 실패 - {e}. 기본값 알 수 없음.")
+        return "알 수 없음"
+
+def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language='ja', output_dir=None):
     if output_dir is None:
-        output_dir = file_path.parent
+        output_dir = video_path.parent
+    else:
+        output_dir = Path(output_dir)
+    
+    base = video_path.stem  # e.g., XRW-106
+    output_path = output_dir / f"{base}.{language}.srt"
+    
+    if output_path.exists():
+        print(f"스킵: {output_path} 이미 존재.")
+        return True
+    
+    print(f"추출 시작: {video_path}")
+    
+    start_time = time.time()  # 추출 시간 측정 시작
     
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # 모델 로드 (CUDA 자동 사용 if available)
+        model = whisper.load_model(model_name)
         
-        blocks = parse_srt_blocks(content)
-        translated_blocks = []
-        for block in blocks:
-            lines = block.splitlines()
-            if len(lines) < 3:
-                translated_blocks.append(block)
-                continue
-            number = lines[0]
-            timestamp = lines[1]
-            text = '\n'.join(lines[2:]).strip()
-            translated_text = translate_text(text)
-            translated_blocks.append(f"{number}\n{timestamp}\n{translated_text}\n")
+        # 오디오 추출 및 전사
+        result = model.transcribe(str(video_path), language=language, task='transcribe')
         
-        output_path = output_dir / (file_path.stem + '_ko.srt')
+        # SRT 형식 생성
+        srt_content = []
+        for i, segment in enumerate(result['segments'], start=1):
+            start = format_timestamp(segment['start'])
+            end = format_timestamp(segment['end'])
+            text = segment['text'].strip()
+            srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
+        
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(''.join(translated_blocks).rstrip() + '\n\n')
+            f.write(''.join(srt_content).rstrip() + '\n\n')
         
-        print(f"번역 완료: {output_path} (ja -> ko)")
+        end_time = time.time()  # 추출 시간 측정 종료
+        elapsed_time = end_time - start_time
+        
+        # 비디오 정보 추출
+        video_duration = get_video_duration(video_path)
+        video_size = get_video_size(video_path)
+        
+        # 출력: 재생 시간 (초 → HH:MM:SS), 용량 (MB/GB), 추출 시간 (초)
+        duration_str = format_timestamp(video_duration) if video_duration > 0 else "알 수 없음"
+        print(f"추출 완료: {output_path} (모델: {model_name}, 언어: {language})")
+        print(f"영상 재생 시간: {duration_str}")
+        print(f"영상 용량: {video_size}")
+        print(f"추출 소요 시간: {elapsed_time:.2f} 초")
+        
         return True
     except Exception as e:
-        print(f"오류: {file_path} - {e}")
+        print(f"오류: {video_path} - {e}")
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description="단일 SRT 파일을 일본어 -> 한국어로 번역 (테스트용). 출력: 원본.stem_ko.srt")
-    parser.add_argument('-f', '--file', required=True, help="번역할 SRT 파일 경로")
-    parser.add_argument('-o', '--output', help="출력 디렉토리 (기본: 입력 디렉토리)")
+    parser = argparse.ArgumentParser(description="Whisper로 단일 비디오에서 SRT 추출 (large-v3-turbo 모델 기본). 출력: video.lang.srt (기본: 동일 경로)")
+    parser.add_argument('-v', '--video', required=True, help="입력 비디오 파일 경로 (e.g., MP4)")
+    parser.add_argument('-m', '--model', default='large-v3-turbo', help="Whisper 모델 (e.g., large-v3-turbo)")
+    parser.add_argument('-l', '--language', default='ja', help="언어 코드 (e.g., ja)")
+    parser.add_argument('-o', '--output', help="출력 디렉토리 (기본: 비디오 동일 경로)")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
-    file_path = Path(args.file)
-    output_dir = Path(args.output) if args.output else None
+    video_path = Path(args.video)
     
-    if not file_path.exists():
-        print(f"오류: {file_path} 존재하지 않음.")
+    if not video_path.exists():
+        print(f"오류: {video_path} 존재하지 않음.")
         return
     
-    translate_srt_file(file_path, output_dir)
+    transcribe_srt_from_video(video_path, args.model, args.language, args.output)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-# 0.transcribe_all.py (개선: process_transcribe_list에서 set()으로 중복 제거)
+# 0.transcribe_all.py (수정: 중복 제거 시 원래 순서 유지 - dict.fromkeys 사용)
 import argparse
 import os
 import subprocess
@@ -34,12 +34,13 @@ def find_videos_without_srt(target_path, srt_home_path, language='ja', list_file
     return list_path
 
 def process_transcribe_list(list_path, model_name, language, output_dir=None):
+    # 목록 읽기
     with open(list_path, 'r', encoding='utf-8') as f:
         videos = [line.strip() for line in f.readlines() if line.strip()]
     
-    unique_videos = list(set(videos))  # 추가: 중복 제거
+    # 중복 제거하면서 원래 순서 유지 (dict.fromkeys)
+    unique_videos = list(dict.fromkeys(videos))
     
-    remaining = []
     for video in unique_videos:
         cmd = ['python', 'transcribe_srt.py', '-v', video, '-m', model_name, '-l', language]
         if output_dir:
@@ -47,14 +48,20 @@ def process_transcribe_list(list_path, model_name, language, output_dir=None):
         
         try:
             subprocess.run(cmd, check=True)
+            # 성공 시 목록 파일에서 해당 video의 모든 발생 제거
+            with open(list_path, 'r', encoding='utf-8') as f:
+                remaining = [line.strip() for line in f.readlines() if line.strip() != video]
+            with open(list_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(remaining))
+            print(f"목록 업데이트: {video} 제거됨")
         except subprocess.CalledProcessError as e:
             print(f"추출 실패: {video} - {e}")
-            remaining.append(video)
+            # 실패 시 유지 (이미 목록에 있음)
     
-    with open(list_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(remaining))
-    
-    print(f"처리 완료: 남은 대상 {len(remaining)}개.")
+    # 최종 남은 개수 출력
+    with open(list_path, 'r', encoding='utf-8') as f:
+        remaining_count = len([line for line in f if line.strip()])
+    print(f"처리 완료: 남은 대상 {remaining_count}개.")
 
 def main():
     parser = argparse.ArgumentParser(description="대상 폴더에서 비디오 검색 후 SRT 추출 (Whisper 사용). SRT 파일 없는 비디오 대상.")
