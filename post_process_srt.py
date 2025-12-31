@@ -1,3 +1,4 @@
+# post_process_srt.py (origin으로 변경)
 # post_process_srt.py (새 파일: 단일 SRT Post-processing)
 import argparse
 from pathlib import Path

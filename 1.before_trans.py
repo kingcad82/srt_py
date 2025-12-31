@@ -1,4 +1,4 @@
-# 1.before_trans.py (수정: -l 옵션 필수 추가, collect_srt 후 rename_all.py 호출)
+# 1.before_trans.py (수정: -l 옵션 필수 추가, collect_srt 후 rename_all.py 호출, post_process_all.py 추가)
 import argparse
 import subprocess
 from pathlib import Path
@@ -18,7 +18,7 @@ def run_command(cmd):
         raise
 
 def main():
-    parser = argparse.ArgumentParser(description="SRT 번역 전처리: collect_srt.py → rename_all.py → trim_repeats_srt.py → separate_all.py 순서로 실행합니다.")
+    parser = argparse.ArgumentParser(description="SRT 번역 전처리: collect_srt.py → rename_all.py → post_process_all.py → trim_repeats_srt.py → separate_all.py 순서로 실행합니다.")
     parser.add_argument('-t', '--target', help="collect_srt.py의 검색 대상 경로 (기본: Windows V:/, Linux /home)")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
     parser.add_argument('-l', '--lang', required=True, help="언어 코드 (e.g., ja, 필수: 파일 이름 변경에 사용)")
@@ -42,12 +42,17 @@ def main():
     rename_cmd = ['python', 'rename_all.py', '-l', args.lang, '-s', str(srt_home_path)]
     run_command(rename_cmd)
     
-    # 1-3. trim_repeats_srt.py 호출
+    # 1-3. post_process_all.py 호출 (rename 후 post_process)
+    print("\n--- post_process_all.py 실행 ---")
+    post_process_all_cmd = ['python', 'post_process_all.py', '-s', str(srt_home_path)]
+    run_command(post_process_all_cmd)
+    
+    # 1-4. trim_repeats_srt.py 호출
     print("\n--- trim_repeats_srt.py 실행 ---")
     trim_cmd = ['python', 'trim_repeats_srt.py', '-s', str(srt_home_path)]
     run_command(trim_cmd)
     
-    # 1-4. separate_all.py 호출
+    # 1-5. separate_all.py 호출
     print("\n--- separate_all.py 실행 ---")
     separate_all_cmd = ['python', 'separate_all.py', '-s', str(srt_home_path)]
     run_command(separate_all_cmd)
