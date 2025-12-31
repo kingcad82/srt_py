@@ -1,3 +1,4 @@
+# 2.after_trans.py (post_process_all.py 호출 추가)
 import argparse
 import subprocess
 from pathlib import Path
@@ -42,6 +43,11 @@ def main():
     print("\n--- merge_all.py 실행 ---")
     merge_all_cmd = ['python', 'merge_all.py', '-s', str(srt_home_path)]
     run_command(merge_all_cmd)
+    
+    # 2-5. post_process_all.py 호출 (Post-processing 전체 적용 추가)
+    print("\n--- post_process_all.py 실행 ---")
+    post_process_all_cmd = ['python', 'post_process_all.py', '-s', str(srt_home_path)]
+    run_command(post_process_all_cmd)
     
     # 2-6. compare_all.py 호출
     print("\n--- compare_all.py 실행 ---")

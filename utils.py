@@ -1,9 +1,10 @@
-# utils.py (변경 없음, 이전 버전 유지)
+# utils.py (Post-processing 함수 추가, 기존 내용 유지)
 import os
 import re
 from pathlib import Path
 import platform
 import codecs
+from datetime import timedelta
 
 def get_base_filename(filename):
     """SRT 파일의 base_filename을 반환합니다. chunk 번호 전에 첫 .까지의 문자열."""
@@ -50,7 +51,7 @@ def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
         return Path(default_linux)
 
 def clean_trans_text(text):
-    """번역된 텍스트에서 불필요한 문구만 제거. 빈 라인 정리나 문법 보정 없음."""
+    """번역된 텍스트에서 불필요한 문구만 제거. 빈 라인 유지."""
     patterns = [r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']  # 원복: r'text'로 변경 (콜론 제거)
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
@@ -136,3 +137,67 @@ def find_mp4_srt_status(target_path):
             print(f"- {missing}")
     else:
         print("모든 MP4에 SRT 파일이 있습니다. OK")
+
+def parse_timestamp(ts_str):
+    """SRT 타임스탬프 문자열을 timedelta로 변환."""
+    hours, minutes, seconds = map(int, ts_str.replace(',', ':').split(':'))
+    return timedelta(hours=hours, minutes=minutes, seconds=seconds / 1000)
+
+def format_timestamp(td):
+    """timedelta를 SRT 타임스탬프 문자열로 변환."""
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    milliseconds = int((td.total_seconds() - total_seconds) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
+
+def add_period_if_missing(text, period_char='.'):  # 한국어는 '.' 또는 '。' 사용 가능
+    """문장 끝에 마침표 추가 (이미 punctuation 있으면 스킵)."""
+    punctuation = r'[.?!。？！]'
+    if not re.search(punctuation + r'\s*$', text.strip()):
+        return text.rstrip() + period_char
+    return text
+
+def split_long_lines(text, max_length=40):
+    """긴 줄 분할 (max_length 초과 시 공백/쉼표에서 분할)."""
+    lines = []
+    current = ''
+    for word in text.split():
+        if len(current) + len(word) + 1 > max_length:
+            lines.append(current.strip())
+            current = word
+        else:
+            current += ' ' + word
+    if current:
+        lines.append(current.strip())
+    return '\n'.join(lines)
+
+def fix_short_duration(start_td, end_td, min_duration=1.5):
+    """짧은 표시시간 수정 (min_duration 초 미만 시 end 연장)."""
+    duration = (end_td - start_td).total_seconds()
+    if duration < min_duration:
+        return start_td, start_td + timedelta(seconds=min_duration)
+    return start_td, end_td
+
+def apply_post_process(block):
+    """단일 SRT 블록에 Post-processing 적용."""
+    lines = block.splitlines()
+    if len(lines) < 3:
+        return block
+    number = lines[0].strip()
+    timestamp = lines[1].strip()
+    text = '\n'.join(lines[2:]).strip()
+    
+    # 적용: 마침표 추가, 긴 줄 분할 (대/소문자 수정은 한국어에 불필요, 스킵)
+    text = add_period_if_missing(text)
+    text = split_long_lines(text)
+    
+    # 타임스탬프 파싱 및 짧은 시간 수정
+    start_str, end_str = timestamp.split(' --> ')
+    start_td = parse_timestamp(start_str)
+    end_td = parse_timestamp(end_str)
+    start_td, end_td = fix_short_duration(start_td, end_td)
+    new_timestamp = f"{format_timestamp(start_td)} --> {format_timestamp(end_td)}"
+    
+    return f"{number}\n{new_timestamp}\n{text}\n"
