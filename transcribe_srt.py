@@ -1,4 +1,4 @@
-# transcribe_srt.py (수정: 영상 용량 추가, MB/GB 단위 출력)
+# transcribe_srt.py (수정: 추출 소요 시간 분:초 형식으로 출력)
 import argparse
 import whisper
 import time
@@ -33,6 +33,12 @@ def get_video_size(video_path):
     except Exception as e:
         print(f"경고: 비디오 크기 추출 실패 - {e}. 기본값 알 수 없음.")
         return "알 수 없음"
+
+def seconds_to_min_sec(seconds):
+    """초를 분:초 형식으로 변환 (e.g., 123 → 2:03)."""
+    mins = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{mins}:{secs:02d}"
 
 def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language='ja', output_dir=None):
     if output_dir is None:
@@ -76,12 +82,12 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         video_duration = get_video_duration(video_path)
         video_size = get_video_size(video_path)
         
-        # 출력: 재생 시간 (초 → HH:MM:SS), 용량 (MB/GB), 추출 시간 (초)
+        # 출력: 재생 시간 (초 → HH:MM:SS), 용량 (MB/GB), 추출 시간 (분:초)
         duration_str = format_timestamp(video_duration) if video_duration > 0 else "알 수 없음"
         print(f"추출 완료: {output_path} (모델: {model_name}, 언어: {language})")
         print(f"영상 재생 시간: {duration_str}")
         print(f"영상 용량: {video_size}")
-        print(f"추출 소요 시간: {elapsed_time:.2f} 초")
+        print(f"추출 소요 시간: {seconds_to_min_sec(elapsed_time)}")
         
         return True
     except Exception as e:
