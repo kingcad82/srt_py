@@ -1,4 +1,4 @@
-# transcribe_srt.py (수정: 추출 소요 시간 분:초 형식으로 출력)
+# transcribe_srt.py (수정: SRT 블록 사이에 빈 줄 추가 - 각 append 끝에 \n\n)
 import argparse
 import whisper
 import time
@@ -64,16 +64,16 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         # 오디오 추출 및 전사
         result = model.transcribe(str(video_path), language=language, task='transcribe')
         
-        # SRT 형식 생성
+        # SRT 형식 생성 (블록 끝에 빈 줄 추가)
         srt_content = []
         for i, segment in enumerate(result['segments'], start=1):
             start = format_timestamp(segment['start'])
             end = format_timestamp(segment['end'])
             text = segment['text'].strip()
-            srt_content.append(f"{i}\n{start} --> {end}\n{text}\n")
+            srt_content.append(f"{i}\n{start} --> {end}\n{text}\n\n")  # 수정: \n\n으로 빈 줄 추가
         
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(''.join(srt_content).rstrip() + '\n\n')
+            f.write(''.join(srt_content).rstrip())  # 마지막 불필요한 \n 제거
         
         end_time = time.time()  # 추출 시간 측정 종료
         elapsed_time = end_time - start_time
