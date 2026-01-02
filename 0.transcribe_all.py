@@ -1,4 +1,4 @@
-# 0.transcribe_all.py (수정: 중복 제거 시 원래 순서 유지 - dict.fromkeys 사용)
+# 0.transcribe_all.py (수정: 모델 기본 large-v3로 변경, subprocess cmd에 -m 전달)
 import argparse
 import os
 import subprocess
@@ -47,7 +47,11 @@ def process_transcribe_list(list_path, model_name, language, output_dir=None):
             cmd.extend(['-o', output_dir])
         
         try:
-            subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            print(result.stdout)
+            if result.stderr:
+                print(f"경고: {result.stderr}")
+            
             # 성공 시 목록 파일에서 해당 video의 모든 발생 제거
             with open(list_path, 'r', encoding='utf-8') as f:
                 remaining = [line.strip() for line in f.readlines() if line.strip() != video]
@@ -56,6 +60,8 @@ def process_transcribe_list(list_path, model_name, language, output_dir=None):
             print(f"목록 업데이트: {video} 제거됨")
         except subprocess.CalledProcessError as e:
             print(f"추출 실패: {video} - {e}")
+            print(f"stdout: {e.stdout}")
+            print(f"stderr: {e.stderr}")
             # 실패 시 유지 (이미 목록에 있음)
     
     # 최종 남은 개수 출력
@@ -67,7 +73,7 @@ def main():
     parser = argparse.ArgumentParser(description="대상 폴더에서 비디오 검색 후 SRT 추출 (Whisper 사용). SRT 파일 없는 비디오 대상.")
     parser.add_argument('-t', '--target', help="검색 대상 경로 (기본: Windows V:/al/av, Linux /home)")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
-    parser.add_argument('-m', '--model', default='large-v3-turbo', help="Whisper 모델 (기본: large-v3-turbo)")
+    parser.add_argument('-m', '--model', default='large-v3', help="Whisper 모델 (기본: large-v3)")
     parser.add_argument('-l', '--language', default='ja', help="언어 코드 (기본: ja)")
     parser.add_argument('-o', '--output', help="출력 디렉토리 (기본: 비디오 동일 경로)")
     parser.add_argument('--list_file', default='transcribe_list.txt', help="목록 파일 이름 (기본: transcribe_list.txt)")

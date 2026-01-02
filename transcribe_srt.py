@@ -1,4 +1,4 @@
-# transcribe_srt.py (수정: SRT 블록 사이에 빈 줄 추가 - 각 append 끝에 \n\n)
+# transcribe_srt.py (수정: hallucination 방지 - condition_on_previous_text=False 추가)
 import argparse
 import whisper
 import time
@@ -40,7 +40,7 @@ def seconds_to_min_sec(seconds):
     secs = int(seconds % 60)
     return f"{mins}:{secs:02d}"
 
-def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language='ja', output_dir=None):
+def transcribe_srt_from_video(video_path, model_name='large-v3', language='ja', output_dir=None):
     if output_dir is None:
         output_dir = video_path.parent
     else:
@@ -61,8 +61,8 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         # 모델 로드 (CUDA 자동 사용 if available)
         model = whisper.load_model(model_name)
         
-        # 오디오 추출 및 전사
-        result = model.transcribe(str(video_path), language=language, task='transcribe')
+        # 오디오 추출 및 전사 (hallucination 방지: condition_on_previous_text=False)
+        result = model.transcribe(str(video_path), language=language, task='transcribe', condition_on_previous_text=False)
         
         # SRT 형식 생성 (블록 끝에 빈 줄 추가)
         srt_content = []
@@ -70,10 +70,10 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
             start = format_timestamp(segment['start'])
             end = format_timestamp(segment['end'])
             text = segment['text'].strip()
-            srt_content.append(f"{i}\n{start} --> {end}\n{text}\n\n")  # 수정: \n\n으로 빈 줄 추가
+            srt_content.append(f"{i}\n{start} --> {end}\n{text}\n\n")
         
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(''.join(srt_content).rstrip())  # 마지막 불필요한 \n 제거
+            f.write(''.join(srt_content).rstrip())
         
         end_time = time.time()  # 추출 시간 측정 종료
         elapsed_time = end_time - start_time
@@ -95,9 +95,9 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description="Whisper로 단일 비디오에서 SRT 추출 (large-v3-turbo 모델 기본). 출력: video.lang.srt (기본: 동일 경로)")
+    parser = argparse.ArgumentParser(description="Whisper로 단일 비디오에서 SRT 추출 (large-v3 모델 기본). 출력: video.lang.srt (기본: 동일 경로)")
     parser.add_argument('-v', '--video', required=True, help="입력 비디오 파일 경로 (e.g., MP4)")
-    parser.add_argument('-m', '--model', default='large-v3-turbo', help="Whisper 모델 (e.g., large-v3-turbo)")
+    parser.add_argument('-m', '--model', default='large-v3', help="Whisper 모델 (e.g., large-v3)")
     parser.add_argument('-l', '--language', default='ja', help="언어 코드 (e.g., ja)")
     parser.add_argument('-o', '--output', help="출력 디렉토리 (기본: 비디오 동일 경로)")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
