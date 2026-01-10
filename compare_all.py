@@ -14,7 +14,7 @@ def delete_related_files(base_filename, srt_home_path):
     ]
     deleted_count = 0
     for dir_path in dirs_to_clean:
-        for file in dir_path.glob(f"{base_filename}*.srt"):
+        for file in dir_path.glob(f"{base_filename}.*.srt"):
             try:
                 file.unlink()
                 print(f"삭제됨: {file}")
