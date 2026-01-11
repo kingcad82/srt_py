@@ -1,10 +1,12 @@
+# compare_srt.py (수정: glob 대신 get_base_filename 필터 사용)
 import argparse
 from pathlib import Path
-from utils import parse_srt_blocks, get_srt_home  # 공통 utils import
+from utils import parse_srt_blocks, get_srt_home, get_base_filename  # 공통 utils import
 
 def compare_srt_file(base_filename, origin_dir, trans_dir):
-    # 원본 파일 자동 검색: f"{base_filename}*.srt" 패턴 (e.g., HMN-520.ja.srt 매치)
-    origin_files = sorted(origin_dir.glob(f"{base_filename}*.srt"))
+    # 수정: glob 대신 모든 .srt 필터링 + get_base_filename으로 정확 매치
+    all_origin_files = list(origin_dir.glob("*.srt"))
+    origin_files = sorted([f for f in all_origin_files if get_base_filename(f.stem) == base_filename])
     if not origin_files:
         print(f"오류: {base_filename}으로 시작하는 원본 파일이 없습니다. 중단합니다.")
         return False
@@ -12,8 +14,8 @@ def compare_srt_file(base_filename, origin_dir, trans_dir):
     if len(origin_files) > 1:
         print(f"경고: 여러 원본 파일 매치 ({len(origin_files)}개). 첫 파일 {origin_file} 사용.")
     
-    # 번역 파일 자동 검색: 동일 패턴
-    trans_files = sorted(trans_dir.glob(f"{base_filename}*.srt"))
+    all_trans_files = list(trans_dir.glob("*.srt"))
+    trans_files = sorted([f for f in all_trans_files if get_base_filename(f.stem) == base_filename])
     if not trans_files:
         print(f"오류: {base_filename}으로 시작하는 번역 파일이 없습니다. 중단합니다.")
         return False
