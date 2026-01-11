@@ -1,21 +1,40 @@
-# 2.after_trans.py (post_process_all.py 제거)
+# 2.after_trans.py (수정: subprocess 출력 bytes 캡처 후 cp949 또는 utf-8 디코딩 시도, Windows 호환 강화)
 import argparse
 import subprocess
 from pathlib import Path
 import os
+import sys  # sys.stdout 재인코딩
 from utils import get_srt_home  # 공통 utils import
 
 def run_command(cmd):
-    """subprocess로 명령어 실행, 실패 시 예외 발생."""
+    """subprocess로 명령어 실행, Windows 한글 깨짐 방지 (bytes 캡처 후 디코딩 시도)."""
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(result.stdout)
-        if result.stderr:
-            print(f"경고: {result.stderr}")
+        # bytes로 캡처 (text=False), 인코딩 문제 방지
+        result = subprocess.run(cmd, check=True, capture_output=True, text=False)
+        
+        # stdout/stderr 디코딩 시도: 먼저 cp949 (Windows 한국어 기본), 실패 시 utf-8 with replace
+        try:
+            stdout = result.stdout.decode('cp949')
+            stderr = result.stderr.decode('cp949')
+        except UnicodeDecodeError:
+            stdout = result.stdout.decode('utf-8', errors='replace')
+            stderr = result.stderr.decode('utf-8', errors='replace')
+        
+        print(stdout)
+        if stderr:
+            print(f"\n경고: {stderr}")
     except subprocess.CalledProcessError as e:
+        # 에러 시도 동일 디코딩
+        try:
+            stdout_err = e.stdout.decode('cp949') if e.stdout else ''
+            stderr_err = e.stderr.decode('cp949') if e.stderr else ''
+        except UnicodeDecodeError:
+            stdout_err = e.stdout.decode('utf-8', errors='replace') if e.stdout else ''
+            stderr_err = e.stderr.decode('utf-8', errors='replace') if e.stderr else ''
+        
         print(f"오류: 명령어 실행 실패 - {e}")
-        print(f"stdout: {e.stdout}")
-        print(f"stderr: {e.stderr}")
+        print(f"stdout: {stdout_err}")
+        print(f"stderr: {stderr_err}")
         raise
 
 def main():
@@ -24,11 +43,16 @@ def main():
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
     args = parser.parse_args()
     
-    # SRT_HOME 설정
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
     
-    # target 경로 설정
     target_path = Path(args.target) if args.target else (Path('V:/') if os.name == 'nt' else Path('/home'))
+    
+    # Windows 콘솔/리다이렉트 호환: utf-8 재인코딩
+    if os.name == 'nt':
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    elif os.name == 'posix':
+        os.environ['PYTHONIOENCODING'] = 'utf-8'
     
     print(f"after_trans.py 시작")
     print(f"SRT_HOME: {srt_home_path}")

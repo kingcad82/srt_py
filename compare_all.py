@@ -1,9 +1,10 @@
+# compare_all.py (수정: new_srt_name = f"{base}.srt"로 고정, '(1)' 유지)
 import argparse
 import shutil
 import os
 from pathlib import Path
-from utils import get_srt_home, get_base_filename, is_trash_path, find_mp4_path  # 공통 utils import
-from compare_srt import compare_srt_file  # compare_srt.py의 함수 import (직접 호출)
+from utils import get_srt_home, get_base_filename, is_trash_path, find_mp4_path
+from compare_srt import compare_srt_file
 
 def delete_related_files(base_filename, srt_home_path):
     dirs_to_clean = [
@@ -24,35 +25,40 @@ def delete_related_files(base_filename, srt_home_path):
     return deleted_count
 
 def compare_all_files(target_path, origin_dir, trans_dir, srt_home_path):
-    # unique base_filename 추출
+    # unique base_filenames 추출 ( '(1)' 등 유지)
     base_filenames = set()
     for file in origin_dir.glob('*.srt'):
-        base = get_base_filename(file.stem)  # e.g., HMN-520.ja → HMN-520
+        base = get_base_filename(file.stem)  # '(1)' 유지
         base_filenames.add(base)
     
     ok_count = 0
     failed_bases = []
     for base in sorted(base_filenames):
+        print(f"처리 중 base: '{base}' (get_base_filename 결과)")
         if compare_srt_file(base, origin_dir, trans_dir):
-            # OK 시 mp4 원래 경로 찾기
             mp4_path = find_mp4_path(base, target_path)
             if mp4_path:
-                # srt 파일 찾기 (trans/base_filename*.srt, 첫 매치)
-                srt_files = list(trans_dir.glob(f"{base}*.srt"))
+                # 수정: glob 대신 모든 .srt 필터링 + get_base_filename == base로 정확 매치
+                all_srt_files = list(trans_dir.glob("*.srt"))
+                srt_files = [f for f in all_srt_files if get_base_filename(f.stem) == base]
                 if srt_files:
-                    srt_file = srt_files[0]
-                    # 새 srt 이름: mp4와 동일 (확장자 .srt)
-                    new_srt_name = mp4_path.stem + '.srt'
+                    srt_file = srt_files[0]  # 첫 매치 사용 (여러 개 시 경고 추가 가능)
+                    if len(srt_files) > 1:
+                        print(f"경고: {base}에 여러 SRT 매치 ({len(srt_files)}개). 첫 파일 {srt_file} 사용.")
+                    # 새 srt 이름: base로 고정 ('(1)' 유지)
+                    new_srt_name = f"{base}.srt"
                     dest_srt_path = mp4_path.parent / new_srt_name
                     try:
+                        if dest_srt_path.exists():
+                            print(f"기존 SRT 존재: {dest_srt_path} - 덮어쓰기 수행")
+                            dest_srt_path.unlink()  # 기존 삭제
                         shutil.move(str(srt_file), str(dest_srt_path))
                         print(f"srt 이동 및 이름 변경: {srt_file} -> {dest_srt_path}")
-                        # 이동 성공 시 관련 파일 삭제
                         delete_related_files(base, srt_home_path)
                     except Exception as e:
                         print(f"srt 이동 실패: {srt_file} - {e}")
                 else:
-                    print(f"경고: {base} srt 파일 없음")
+                    print(f"경고: {base} srt 파일 없음 (정확 매치 실패)")
             else:
                 print(f"경고: {base} mp4 파일 없음")
             ok_count += 1

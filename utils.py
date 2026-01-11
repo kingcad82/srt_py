@@ -98,15 +98,27 @@ def compress_repeats(text: str, patterns: list[str], min_repeat: int, keep_repea
         text = rx.sub(lambda m: f"{m.group('pre')}{rep}{m.group('post')}", text)
     return text
 
-def find_mp4_path(base_filename, target_path):
-    """target_path에서 base_filename으로 시작하는 .mp4 파일 경로 찾기."""
+def find_mp4_path(base, target_path):
+    """base_filename에 정확히 일치하는 MP4 경로 찾기 (재귀 검색, 휴지통 스킵, 첫 매치 반환)."""
+    video_extensions = {'.mp4', '.mkv', '.avi'}
+    found_paths = []
     for root, dirs, files in os.walk(target_path, topdown=True):
         dirs[:] = [d for d in dirs if not is_trash_path(Path(root) / d)]
         if is_trash_path(Path(root)):
             continue
         for file in files:
-            if file.startswith(base_filename) and file.lower().endswith('.mp4'):
-                return Path(root) / file
+            video_path = Path(root) / file
+            if video_path.suffix.lower() in video_extensions:
+                stem = video_path.stem
+                print(f"검색 중: MP4 stem '{stem}' vs base '{base}' (== 비교)")  # 디버그 강화: 모든 비교 출력 (문제 추적)
+                if stem == base:  # 엄격 == (공백, (1) 완벽 일치만)
+                    found_paths.append(video_path)
+                    print(f"정확 매치: {video_path} for '{base}'")
+    if found_paths:
+        selected = found_paths[0]
+        print(f"선택된 MP4: {selected} (총 {len(found_paths)}개)")
+        return selected
+    print(f"경고: '{base}'에 매치 MP4 없음")
     return None
 
 def find_mp4_srt_status(target_path):
@@ -201,3 +213,18 @@ def apply_post_process(block):
     new_timestamp = f"{format_timestamp(start_td)} --> {format_timestamp(end_td)}"
     
     return f"{number}\n{new_timestamp}\n{text}\n"
+
+def get_unique_path(path: Path) -> Path:
+    """중복 파일 시 '(n)' 추가하여 유니크 경로 반환."""
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+    counter = 1
+    while True:
+        new_stem = f"{stem} ({counter})"
+        new_path = parent / f"{new_stem}{suffix}"
+        if not new_path.exists():
+            return new_path
+        counter += 1

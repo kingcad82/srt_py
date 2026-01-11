@@ -87,7 +87,7 @@ def main():
     print(f"SRT_HOME: {srt_home_path}")
     
     list_path = find_videos_without_srt(target_path, srt_home_path, args.language, args.list_file)
-    process_transcribe_list(list_path, args.model, args.language, args.output)
+    #process_transcribe_list(list_path, args.model, args.language, args.output)
     
     print("\ntranscribe_all.py 완료")
 
