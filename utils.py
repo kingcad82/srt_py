@@ -44,7 +44,7 @@ def parse_srt_blocks(content):
         blocks.append('\n'.join(current_block) + '\n')
     return blocks
 
-def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
+def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
     if platform.system() == 'Windows':
         return Path(default_windows)
     else:
@@ -52,7 +52,7 @@ def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
 
 def clean_trans_text(text):
     """번역된 텍스트에서 불필요한 문구만 제거. 빈 라인 유지."""
-    patterns = [r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']  # 원복: r'text'로 변경 (콜론 제거)
+    patterns = [r'animate-gaussian', r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']  # 원복: r'text'로 변경 (콜론 제거)
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
     return text
@@ -110,7 +110,7 @@ def find_mp4_path(base, target_path):
             video_path = Path(root) / file
             if video_path.suffix.lower() in video_extensions:
                 stem = video_path.stem
-                print(f"검색 중: MP4 stem '{stem}' vs base '{base}' (== 비교)")  # 디버그 강화: 모든 비교 출력 (문제 추적)
+                #print(f"검색 중: MP4 stem '{stem}' vs base '{base}' (== 비교)")  # 디버그 강화: 모든 비교 출력 (문제 추적)
                 if stem == base:  # 엄격 == (공백, (1) 완벽 일치만)
                     found_paths.append(video_path)
                     print(f"정확 매치: {video_path} for '{base}'")
