@@ -1,42 +1,50 @@
+# separate_all.py
+# 새 버전: base_filename 폴더 구조 전체 지원 (rglob + chunk=800)
+
 import argparse
 from pathlib import Path
-import os
-from utils import get_srt_home  # 공통 utils import
-from separate_srt import separate_srt_file  # separate_srt.py의 함수 import (직접 호출)
+from utils import get_srt_home
+from separate_srt import separate_srt_file   # 단일 chunk 함수 import
 
-def separate_all_files(origin_dir, separated_dir):
+def separate_all_files(origin_parent: Path, separated_dir: Path, chunk_size: int = 800):
     processed_count = 0
-    chunk_total = 0
-    for file in origin_dir.glob('*.srt'):
-        chunks = separate_srt_file(file, separated_dir)
+    total_chunks = 0
+    
+    # origin 아래 모든 base 폴더의 .srt 파일 검색
+    for file in origin_parent.rglob("*.srt"):
+        chunks = separate_srt_file(file, separated_dir, chunk_size)
         if chunks > 0:
             processed_count += 1
-            chunk_total += chunks
+            total_chunks += chunks
         else:
-            print(f"스킵됨: {file} - 처리 실패")
+            print(f"스킵됨: {file}")
     
-    print(f"총 {processed_count}개의 SRT 파일이 처리되었습니다. (총 {chunk_total}개의 chunk 생성)")
+    print(f"\n=== separate_all 완료 ===")
+    print(f"처리된 원본 파일: {processed_count}개")
+    print(f"생성된 총 chunk: {total_chunks}개")
 
 def main():
-    parser = argparse.ArgumentParser(description="SRT_HOME/origin의 모든 SRT 파일을 800개 자막 블록 chunk로 나누어 SRT_HOME/origin_separate에 저장합니다.")
-    parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
+    parser = argparse.ArgumentParser(
+        description="SRT_HOME/origin 아래 모든 base 폴더의 SRT 파일을 800개 블록 chunk로 나누어 origin_separate/{base}/ 에 저장합니다."
+    )
+    parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
+    parser.add_argument('-c', '--chunk-size', type=int, default=800, 
+                        help="한 chunk당 블록 수 (기본: 800)")
     args = parser.parse_args()
     
-    # SRT_HOME 설정
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
-    
-    origin_dir = srt_home_path / 'origin'
+    origin_parent = srt_home_path / 'origin'
     separated_dir = srt_home_path / 'origin_separate'
     
     print(f"SRT_HOME: {srt_home_path}")
-    print(f"원본 디렉토리: {origin_dir}")
-    print(f"분할 디렉토리: {separated_dir}")
+    print(f"원본 디렉토리: {origin_parent} (하위 base 폴더 모두)")
+    print(f"chunk 크기: {args.chunk_size}개\n")
     
-    if not origin_dir.exists():
-        print(f"오류: {origin_dir}가 존재하지 않습니다.")
+    if not origin_parent.exists():
+        print(f"오류: {origin_parent} 폴더가 존재하지 않습니다.")
         return
     
-    separate_all_files(origin_dir, separated_dir)
+    separate_all_files(origin_parent, separated_dir, args.chunk_size)
 
 if __name__ == "__main__":
     main()
