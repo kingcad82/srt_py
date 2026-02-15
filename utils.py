@@ -1,8 +1,10 @@
+# utils.py (Post-processing 함수 추가, 기존 내용 유지)
 import os
 import re
 from pathlib import Path
 import platform
 import codecs
+from datetime import timedelta
 
 def get_base_filename(filename):
     """SRT 파일의 base_filename을 반환합니다. chunk 번호 전에 첫 .까지의 문자열."""
@@ -42,68 +44,21 @@ def parse_srt_blocks(content):
         blocks.append('\n'.join(current_block) + '\n')
     return blocks
 
-def get_srt_home(default_windows='V:/srt_home', default_linux='/home/srt_home'):
+def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
     if platform.system() == 'Windows':
         return Path(default_windows)
     else:
         return Path(default_linux)
 
-# 수정된 clean_trans_text: for 루프로 변경하여 자기 참조 피함, 연속 빈 라인 한 줄로 보정, 블록 끝 빈 라인 한 개 추가
 def clean_trans_text(text):
-    """번역된 텍스트에서 불필요한 문구 제거: 'text', 'srt', 'assistant: ', '다음 내용을 참조하세요:' 등. 공백 처리 안 된 경우 수정."""
-    patterns = [r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    """번역된 텍스트에서 불필요한 문구만 제거. 빈 라인 유지."""
+    patterns = [r'animate-gaussian', r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']  # 원복: r'text'로 변경 (콜론 제거)
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-    
-    # 빈 라인 정리: 연속 빈 라인을 한 줄로 줄임
-    lines = []
-    last_was_empty = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped:
-            lines.append(line)
-            last_was_empty = False
-        else:
-            if not last_was_empty:
-                lines.append('')
-                last_was_empty = True
-    
-    # 블록 파싱 후 재구성: 각 블록 끝에 빈 라인 한 개만 추가
-    blocks = parse_srt_blocks('\n'.join(lines))  # 정리된 lines로 파싱
-    cleaned_blocks = []
-    for block in blocks:
-        block_lines = []
-        last_was_empty_block = False
-        for line in block.splitlines():
-            stripped = line.strip()
-            if stripped:
-                block_lines.append(line)
-                last_was_empty_block = False
-            else:
-                if not last_was_empty_block:
-                    block_lines.append('')
-                    last_was_empty_block = True
-        # 블록 끝에 빈 라인 한 개 추가 (이미 있으면 중복 피함)
-        if block_lines and block_lines[-1].strip():
-            block_lines.append('')
-        cleaned_blocks.append('\n'.join(block_lines))
-    
-    final_output = '\n'.join(cleaned_blocks)
-    return final_output
-
-# trim 관련 함수들 유지 (생략: sniff_encoding, read_text_preserve_encoding 등)
-UTF8_BOM = b"\xef\xbb\xbf"
-UTF16_LE_BOM = b"\xff\xfe"
-UTF16_BE_BOM = b"\xfe\xff"
+    return text
 
 def sniff_encoding(path: Path) -> str:
-    with path.open("rb") as f:
-        head = f.read(4)
-    if head.startswith(UTF8_BOM):
-        return "utf-8-sig"
-    if head.startswith(UTF16_LE_BOM) or head.startswith(UTF16_BE_BOM):
-        return "utf-16"
-    for enc in ("utf-8", "cp949", "euc-kr", "utf-16", "latin-1"):
+    for enc in ("utf-8", "utf-8-sig", "utf-16", "latin-1"):
         try:
             path.read_text(encoding=enc)
             return enc
@@ -143,15 +98,27 @@ def compress_repeats(text: str, patterns: list[str], min_repeat: int, keep_repea
         text = rx.sub(lambda m: f"{m.group('pre')}{rep}{m.group('post')}", text)
     return text
 
-def find_mp4_path(base_filename, target_path):
-    """target_path에서 base_filename으로 시작하는 .mp4 파일 경로 찾기."""
+def find_mp4_path(base, target_path):
+    """base_filename에 정확히 일치하는 MP4 경로 찾기 (재귀 검색, 휴지통 스킵, 첫 매치 반환)."""
+    video_extensions = {'.mp4', '.mkv', '.avi'}
+    found_paths = []
     for root, dirs, files in os.walk(target_path, topdown=True):
         dirs[:] = [d for d in dirs if not is_trash_path(Path(root) / d)]
         if is_trash_path(Path(root)):
             continue
         for file in files:
-            if file.startswith(base_filename) and file.lower().endswith('.mp4'):
-                return Path(root) / file
+            video_path = Path(root) / file
+            if video_path.suffix.lower() in video_extensions:
+                stem = video_path.stem
+                #print(f"검색 중: MP4 stem '{stem}' vs base '{base}' (== 비교)")  # 디버그 강화: 모든 비교 출력 (문제 추적)
+                if stem == base:  # 엄격 == (공백, (1) 완벽 일치만)
+                    found_paths.append(video_path)
+                    print(f"정확 매치: {video_path} for '{base}'")
+    if found_paths:
+        selected = found_paths[0]
+        print(f"선택된 MP4: {selected} (총 {len(found_paths)}개)")
+        return selected
+    print(f"경고: '{base}'에 매치 MP4 없음")
     return None
 
 def find_mp4_srt_status(target_path):
@@ -182,3 +149,82 @@ def find_mp4_srt_status(target_path):
             print(f"- {missing}")
     else:
         print("모든 MP4에 SRT 파일이 있습니다. OK")
+
+def parse_timestamp(ts_str):
+    """SRT 타임스탬프 문자열을 timedelta로 변환."""
+    hours, minutes, seconds = map(int, ts_str.replace(',', ':').split(':'))
+    return timedelta(hours=hours, minutes=minutes, seconds=seconds / 1000)
+
+def format_timestamp(td):
+    """timedelta를 SRT 타임스탬프 문자열로 변환."""
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    milliseconds = int((td.total_seconds() - total_seconds) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
+
+def add_period_if_missing(text, period_char='.'):  # 한국어는 '.' 또는 '。' 사용 가능
+    """문장 끝에 마침표 추가 (이미 punctuation 있으면 스킵)."""
+    punctuation = r'[.?!。？！]'
+    if not re.search(punctuation + r'\s*$', text.strip()):
+        return text.rstrip() + period_char
+    return text
+
+def split_long_lines(text, max_length=40):
+    """긴 줄 분할 (max_length 초과 시 공백/쉼표에서 분할)."""
+    lines = []
+    current = ''
+    for word in text.split():
+        if len(current) + len(word) + 1 > max_length:
+            lines.append(current.strip())
+            current = word
+        else:
+            current += ' ' + word
+    if current:
+        lines.append(current.strip())
+    return '\n'.join(lines)
+
+def fix_short_duration(start_td, end_td, min_duration=1.5):
+    """짧은 표시시간 수정 (min_duration 초 미만 시 end 연장)."""
+    duration = (end_td - start_td).total_seconds()
+    if duration < min_duration:
+        return start_td, start_td + timedelta(seconds=min_duration)
+    return start_td, end_td
+
+def apply_post_process(block):
+    """단일 SRT 블록에 Post-processing 적용."""
+    lines = block.splitlines()
+    if len(lines) < 3:
+        return block
+    number = lines[0].strip()
+    timestamp = lines[1].strip()
+    text = '\n'.join(lines[2:]).strip()
+    
+    # 적용: 마침표 추가, 긴 줄 분할 (대/소문자 수정은 한국어에 불필요, 스킵)
+    text = add_period_if_missing(text)
+    text = split_long_lines(text)
+    
+    # 타임스탬프 파싱 및 짧은 시간 수정
+    start_str, end_str = timestamp.split(' --> ')
+    start_td = parse_timestamp(start_str)
+    end_td = parse_timestamp(end_str)
+    start_td, end_td = fix_short_duration(start_td, end_td)
+    new_timestamp = f"{format_timestamp(start_td)} --> {format_timestamp(end_td)}"
+    
+    return f"{number}\n{new_timestamp}\n{text}\n"
+
+def get_unique_path(path: Path) -> Path:
+    """중복 파일 시 '(n)' 추가하여 유니크 경로 반환."""
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+    counter = 1
+    while True:
+        new_stem = f"{stem} ({counter})"
+        new_path = parent / f"{new_stem}{suffix}"
+        if not new_path.exists():
+            return new_path
+        counter += 1

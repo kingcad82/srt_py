@@ -1,18 +1,19 @@
+# merge_srt.py (수정: glob 대신 get_base_filename 필터 사용, 섞임 방지)
 import argparse
 from pathlib import Path
 import os
-from utils import get_srt_home  # 공통 utils import
+from utils import get_srt_home, get_base_filename  # 공통 utils import
 
 def merge_srt_file(base_filename, lang, origin_separate_dir, trans_separate_dir, trans_dir):
-    # lang 지정 시: search_pattern = f"{base_filename}.{lang}_*.srt"
-    # lang None 시: search_pattern = f"{base_filename}*_*srt" (자동 *로 언어 코드 매치)
-    search_pattern = f"{base_filename}.{lang}_*.srt" if lang else f"{base_filename}*_*.srt"
-    # chunk 파일 목록 검색
-    origin_chunks = sorted(origin_separate_dir.glob(search_pattern))
-    trans_chunks = sorted(trans_separate_dir.glob(search_pattern))
+    # 수정: glob 대신 모든 .srt 필터링 + get_base_filename으로 정확 매치
+    all_origin_files = list(origin_separate_dir.glob("*.srt"))
+    origin_chunks = sorted([f for f in all_origin_files if get_base_filename(f.stem) == base_filename])
+    
+    all_trans_files = list(trans_separate_dir.glob("*.srt"))
+    trans_chunks = sorted([f for f in all_trans_files if get_base_filename(f.stem) == base_filename])
     
     if len(origin_chunks) == 0:
-        print(f"오류: {base_filename}에 해당하는 origin_separate chunk 파일이 없습니다. (패턴: {search_pattern})")
+        print(f"오류: {base_filename}에 해당하는 origin_separate chunk 파일이 없습니다.")
         return False
     
     if len(origin_chunks) != len(trans_chunks):
@@ -44,7 +45,9 @@ def merge_srt_file(base_filename, lang, origin_separate_dir, trans_separate_dir,
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(final_output)
         
-        print(f"병합 완료: {output_path} (총 chunk: {len(trans_chunks)}, lang: {lang or 'auto'})")
+        # lang 자동 추출 (search_base.split('.')[-1])
+        auto_lang = search_base.split('.')[-1] if '.' in search_base else 'auto'
+        print(f"병합 완료: {output_path} (총 chunk: {len(trans_chunks)}, lang: {lang or auto_lang})")
         return True
     except Exception as e:
         print(f"오류 발생: {base_filename} - {e}")
