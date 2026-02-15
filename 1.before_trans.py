@@ -34,8 +34,8 @@ def main():
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
     parser.add_argument('-l', '--lang', required=True, 
                         help="언어 코드 (e.g. ja) - 필수")
-    parser.add_argument('-c', '--chunk-size', type=int, default=50, 
-                        help="separate 시 chunk 크기 (기본 50)")
+    parser.add_argument('-c', '--chunk-size', type=int, default=100, 
+                        help="separate 시 chunk 크기 (기본 100)")
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
@@ -70,7 +70,7 @@ def main():
     run_command(['python', 'separate_all.py', '-s', str(srt_home_path), '-c', str(args.chunk_size)])
     
     print("\n🎉 before_trans.py 모든 단계 완료!")
-    print(f"   → origin_separate/{base}/ 폴더에 chunk 파일들이 준비되었습니다.")
+    print(f"   → origin_separate/base/ 폴더에 chunk 파일들이 준비되었습니다.")
 
 if __name__ == "__main__":
     main()

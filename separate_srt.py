@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from utils import parse_srt_blocks, get_srt_home, get_base_dir, get_base_from_path
 
-def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 50):
+def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 100):
     """SRT 파일을 chunk_size(기본 50)개 블록으로 나누어 base 폴더에 저장"""
     separated_base_dir = get_base_dir(separated_dir, get_base_from_path(file_path))
     
@@ -20,7 +20,7 @@ def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 50
             print(f"경고: {file_path}에 자막 블록이 없습니다.")
             return 0
         
-        chunk_count = 0
+        chunk_count = 1
         for i in range(0, total_blocks, chunk_size):
             chunk_blocks = blocks[i:i + chunk_size]
             
@@ -47,8 +47,8 @@ def main():
     parser.add_argument('-f', '--file', required=True, 
                         help="분할할 SRT 파일 경로")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
-    parser.add_argument('-c', '--chunk-size', type=int, default=50, 
-                        help="한 chunk당 블록 수 (기본: 50)")
+    parser.add_argument('-c', '--chunk-size', type=int, default=100, 
+                        help="한 chunk당 블록 수 (기본: 100)")
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
