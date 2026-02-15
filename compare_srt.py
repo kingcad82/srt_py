@@ -37,7 +37,7 @@ def compare_srt_file(base_filename: str, origin_dir: Path, trans_dir: Path):
         
         # 1. 총 블록 수 비교
         if len(origin_blocks) != len(trans_blocks):
-            print(f"❌ 블록 수 불일치: 원본 {len(origin_blocks)} vs 번역 {len(trans_blocks)}")
+            print(f"[X] 블록 수 불일치: 원본 {len(origin_blocks)} vs 번역 {len(trans_blocks)}")
             return False
         
         # 2. 번호 + 타임스탬프 + 빈 대사 검사
@@ -48,23 +48,23 @@ def compare_srt_file(base_filename: str, origin_dir: Path, trans_dir: Path):
             
             # 번호 비교
             if o_lines[0].strip() != t_lines[0].strip():
-                print(f"❌ 블록 {i+1}: 번호 불일치")
+                print(f"[X] 블록 {i+1}: 번호 불일치")
                 mismatch = True
             # 타임스탬프 비교
             if o_lines[1].strip() != t_lines[1].strip():
-                print(f"❌ 블록 {i+1}: 타임스탬프 불일치")
+                print(f"[X] 블록 {i+1}: 타임스탬프 불일치")
                 mismatch = True
             # 빈 대사 확인
             trans_text = '\n'.join(t_lines[2:]).strip()
             if not trans_text:
-                print(f"⚠️  블록 {i+1}: 번역 대사가 비어있습니다!")
+                print(f"[!] 블록 {i+1}: 번역 대사가 비어있습니다!")
                 mismatch = True
         
         if mismatch:
-            print(f"❌ {base_filename} 비교 실패")
+            print(f"[X] {base_filename} 비교 실패")
             return False
         else:
-            print(f"✅ {base_filename} 비교 완료 (총 {len(origin_blocks)} 블록, 완벽 일치)")
+            print(f"[O] {base_filename} 비교 완료 (총 {len(origin_blocks)} 블록, 완벽 일치)")
             return True
             
     except Exception as e:

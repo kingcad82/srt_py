@@ -3,7 +3,7 @@
 
 import argparse
 from pathlib import Path
-from utils import get_srt_home
+from utils import get_srt_home, get_base_from_path
 from restore_srt import restore_srt_file   # 단일 restore 함수 import
 
 def restore_all_files(origin_separate_dir: Path, trans_separate_dir: Path):

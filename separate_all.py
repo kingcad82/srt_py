@@ -1,12 +1,12 @@
 # separate_all.py
-# 새 버전: base_filename 폴더 구조 전체 지원 (rglob + chunk=50)
+# 새 버전: base_filename 폴더 구조 전체 지원 (rglob + chunk=800)
 
 import argparse
 from pathlib import Path
 from utils import get_srt_home
 from separate_srt import separate_srt_file   # 단일 chunk 함수 import
 
-def separate_all_files(origin_parent: Path, separated_dir: Path, chunk_size: int = 50):
+def separate_all_files(origin_parent: Path, separated_dir: Path, chunk_size: int = 800):
     processed_count = 0
     total_chunks = 0
     
@@ -25,11 +25,11 @@ def separate_all_files(origin_parent: Path, separated_dir: Path, chunk_size: int
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SRT_HOME/origin 아래 모든 base 폴더의 SRT 파일을 50개 블록 chunk로 나누어 origin_separate/{base}/ 에 저장합니다."
+        description="SRT_HOME/origin 아래 모든 base 폴더의 SRT 파일을 800개 블록 chunk로 나누어 origin_separate/{base}/ 에 저장합니다."
     )
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
-    parser.add_argument('-c', '--chunk-size', type=int, default=50, 
-                        help="한 chunk당 블록 수 (기본: 50)")
+    parser.add_argument('-c', '--chunk-size', type=int, default=800, 
+                        help="한 chunk당 블록 수 (기본: 800)")
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()

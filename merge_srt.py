@@ -22,11 +22,14 @@ def merge_srt_file(base_filename: str, lang: str, origin_separate_dir: Path, tra
         print(f"오류: chunk 수 불일치 (origin: {len(origin_chunks)}, trans: {len(trans_chunks)})")
         return False
     
-    # chunk 번호 검증 (_000, _001 ... 순서)
-    for i, (o_chunk, t_chunk) in enumerate(zip(origin_chunks, trans_chunks)):
-        expected = f"_{i:03d}.srt"
-        if not (o_chunk.name.endswith(expected) and t_chunk.name.endswith(expected)):
-            print(f"오류: chunk 번호 불일치 ({o_chunk.name})")
+    # chunk 번호 검증 (Origin과 Trans의 번호 일치 여부 확인)
+    for o_chunk, t_chunk in zip(origin_chunks, trans_chunks):
+        # 파일명 끝의 _XXX.srt (8글자)를 기준으로 비교
+        o_suffix = o_chunk.name[-8:]
+        
+        # Origin의 접미사(_001.srt 등)로 Trans가 끝나는지 확인
+        if not (o_suffix.startswith('_') and o_suffix[1:4].isdigit() and t_chunk.name.endswith(o_suffix)):
+            print(f"오류: chunk 번호 불일치 ({o_chunk.name} vs {t_chunk.name})")
             return False
     
     # 출력 경로: trans/{base}/{base}.srt
@@ -36,16 +39,16 @@ def merge_srt_file(base_filename: str, lang: str, origin_separate_dir: Path, tra
     try:
         merged_content = []
         for trans_chunk in trans_chunks:
-            content = trans_chunk.read_text(encoding='utf-8').rstrip()
+            content = trans_chunk.read_text(encoding='utf-8').strip()
             merged_content.append(content)
         
         final_output = '\n\n'.join(merged_content) + '\n\n'
         output_path.write_text(final_output, encoding='utf-8')
         
-        print(f"✅ 병합 완료: {output_path} ({len(trans_chunks)} chunk)")
+        print(f"병합 완료: {output_path} ({len(trans_chunks)} chunk)")
         return True
     except Exception as e:
-        print(f"❌ 병합 오류: {base_filename} - {e}")
+        print(f"병합 오류: {base_filename} - {e}")
         return False
 
 def main():
@@ -58,16 +61,3 @@ def main():
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
     args = parser.parse_args()
     
-    srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
-    origin_separate_dir = srt_home_path / 'origin_separate'
-    trans_separate_dir = srt_home_path / 'trans_separate'
-    trans_dir = srt_home_path / 'trans'
-    
-    print(f"SRT_HOME: {srt_home_path}")
-    print(f"base_filename: {args.file}")
-    print(f"출력: trans/{args.file}/{args.file}.srt\n")
-    
-    merge_srt_file(args.file, args.lang, origin_separate_dir, trans_separate_dir, trans_dir)
-
-if __name__ == "__main__":
-    main()

@@ -1,12 +1,12 @@
 # separate_srt.py
-# 새 버전: chunk_size=50 + base_filename 폴더 구조 지원
+# 새 버전: chunk_size=800 + base_filename 폴더 구조 지원
 
 import argparse
 from pathlib import Path
 from utils import parse_srt_blocks, get_srt_home, get_base_dir, get_base_from_path
 
-def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 100):
-    """SRT 파일을 chunk_size(기본 50)개 블록으로 나누어 base 폴더에 저장"""
+def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 800):
+    """SRT 파일을 chunk_size(기본 800)개 블록으로 나누어 base 폴더에 저장"""
     separated_base_dir = get_base_dir(separated_dir, get_base_from_path(file_path))
     
     try:
@@ -42,13 +42,13 @@ def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 10
 
 def main():
     parser = argparse.ArgumentParser(
-        description="단일 SRT 파일을 50개 블록 chunk로 나누어 origin_separate/{base}/ 에 저장합니다."
+        description="단일 SRT 파일을 800개 블록 chunk로 나누어 origin_separate/{base}/ 에 저장합니다."
     )
     parser.add_argument('-f', '--file', required=True, 
                         help="분할할 SRT 파일 경로")
     parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로")
-    parser.add_argument('-c', '--chunk-size', type=int, default=100, 
-                        help="한 chunk당 블록 수 (기본: 100)")
+    parser.add_argument('-c', '--chunk-size', type=int, default=800, 
+                        help="한 chunk당 블록 수 (기본: 800)")
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
