@@ -3,6 +3,7 @@
 # (origin_separate/{base}/xxx_000.srt → trans_separate/{base}/xxx_000.srt 복원)
 
 import argparse
+import shutil
 from pathlib import Path
 from utils import (
     parse_srt_blocks,
@@ -34,6 +35,12 @@ def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_
     try:
         origin_content = origin_file.read_text(encoding='utf-8')
         trans_content = trans_file.read_text(encoding='utf-8')
+        
+        # 백업: trans_separate/{base}/{file}.srt → trans_bak/{base}/{file}.srt
+        srt_home = origin_separate_dir.parent
+        trans_bak_dir = get_base_dir(srt_home / 'trans_bak', base)
+        trans_bak_file = trans_bak_dir / file_path.name
+        shutil.copy(trans_file, trans_bak_file)
         
         # 1. 번역 노이즈 제거
         cleaned_trans = clean_trans_text(trans_content)
@@ -110,6 +117,7 @@ def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_
         
         print(f"[OK] 복원 완료: trans_separate/{base}/{file_path.name}")
         print(f"   (원본 블록: {len(origin_blocks)}, 번역 블록: {len(trans_blocks)})")
+        print(f"   (백업 저장: trans_bak/{base}/{file_path.name})")
         return True
         
     except Exception as e:
