@@ -5,9 +5,11 @@ import argparse
 from pathlib import Path
 from utils import parse_srt_blocks, get_srt_home, get_base_dir, get_base_from_path
 
-def separate_srt_file(file_path: Path, separated_dir: Path, chunk_size: int = 800):
+def separate_srt_file(file_path: Path, separated_dir: Path, trans_separate_dir: Path, chunk_size: int = 800):
     """SRT 파일을 chunk_size(기본 800)개 블록으로 나누어 base 폴더에 저장"""
-    separated_base_dir = get_base_dir(separated_dir, get_base_from_path(file_path))
+    base_filename = get_base_from_path(file_path)
+    separated_base_dir = get_base_dir(separated_dir, base_filename)
+    trans_base_dir = get_base_dir(trans_separate_dir, base_filename)
     
     try:
         content = file_path.read_text(encoding='utf-8')
@@ -53,6 +55,7 @@ def main():
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
     separated_dir = srt_home_path / 'origin_separate'
+    trans_separate_dir = srt_home_path / 'trans_separate'
     
     file_path = Path(args.file)
     if not file_path.exists():
@@ -63,7 +66,7 @@ def main():
     print(f"분할 대상: {file_path}")
     print(f"chunk 크기: {args.chunk_size}개\n")
     
-    chunks = separate_srt_file(file_path, separated_dir, args.chunk_size)
+    chunks = separate_srt_file(file_path, separated_dir, trans_separate_dir, args.chunk_size)
     print(f"총 {chunks}개의 chunk 파일이 생성되었습니다.")
 
 if __name__ == "__main__":

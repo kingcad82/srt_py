@@ -6,13 +6,13 @@ from pathlib import Path
 from utils import get_srt_home
 from separate_srt import separate_srt_file   # 단일 chunk 함수 import
 
-def separate_all_files(origin_parent: Path, separated_dir: Path, chunk_size: int = 800):
+def separate_all_files(origin_parent: Path, separated_dir: Path, trans_separate_dir: Path, chunk_size: int = 800):
     processed_count = 0
     total_chunks = 0
     
     # origin 아래 모든 base 폴더의 .srt 파일 검색
     for file in origin_parent.rglob("*.srt"):
-        chunks = separate_srt_file(file, separated_dir, chunk_size)
+        chunks = separate_srt_file(file, separated_dir, trans_separate_dir, chunk_size)
         if chunks > 0:
             processed_count += 1
             total_chunks += chunks
@@ -35,6 +35,7 @@ def main():
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
     origin_parent = srt_home_path / 'origin'
     separated_dir = srt_home_path / 'origin_separate'
+    trans_separate_dir = srt_home_path / 'trans_separate'
     
     print(f"SRT_HOME: {srt_home_path}")
     print(f"원본 디렉토리: {origin_parent} (하위 base 폴더 모두)")
@@ -44,7 +45,7 @@ def main():
         print(f"오류: {origin_parent} 폴더가 존재하지 않습니다.")
         return
     
-    separate_all_files(origin_parent, separated_dir, args.chunk_size)
+    separate_all_files(origin_parent, separated_dir, trans_separate_dir, args.chunk_size)
 
 if __name__ == "__main__":
     main()
