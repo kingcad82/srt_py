@@ -11,6 +11,7 @@ from utils import (
     get_base_from_path,
     get_base_dir
 )
+import re
 
 def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_dir: Path):
     base = get_base_from_path(file_path)
@@ -36,6 +37,47 @@ def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_
         
         # 1. 번역 노이즈 제거
         cleaned_trans = clean_trans_text(trans_content)
+
+        # 1a. 추가 정제: 번역 결과 안에 삽입된 복사/사용자 라벨 등 블록 번호를 대체할 수 있는 잔재 제거
+        # 예: '복사901', 'user: 이어서 번역' 같은 라인이 타임스탬프 바로 앞에 들어가면
+        # 타임스탬프만 카운트되어 블록 수 불일치가 발생합니다.
+        cleaned_lines = []
+        for line in cleaned_trans.splitlines():
+            # 제거할 패턴: 한글 '복사' + 숫자, 또는 'copy' variants, 또는 'user:'/'assistant:' 라벨
+            if re.match(r"^\s*(?:복사|copy)\s*\d+\s*$", line, flags=re.IGNORECASE):
+                continue
+            if re.match(r"^\s*(?:user:|assistant:)", line, flags=re.IGNORECASE):
+                continue
+            cleaned_lines.append(line)
+        cleaned_trans = "\n".join(cleaned_lines)
+        # 1b. 추가 정제: 타임스탬프 라인이 숫자 인덱스 없이 단독으로 존재하면 제거
+        # (예: 이전에 삽입된 복사 라벨/인코딩 깨짐으로 인해 숫자 인덱스가 손실된 경우)
+        time_pattern = re.compile(r'^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$')
+        refined_lines = []
+        # Remove leading blank lines to avoid orphan timestamps caused by
+        # initial empty lines preceding the first timestamp.
+        trans_lines = cleaned_trans.splitlines()
+        while trans_lines and trans_lines[0].strip() == '':
+            trans_lines.pop(0)
+
+        for idx, line in enumerate(trans_lines):
+            if time_pattern.match(line.strip()):
+                # 이전 라인이 존재하고 숫자 인덱스이면 보존
+                prev = refined_lines[-1] if refined_lines else ''
+                if re.match(r'^\s*\d+\s*$', prev):
+                    refined_lines.append(line)
+                else:
+                    # If this is the very first line and it's a timestamp,
+                    # treat it as the start of block 1 by inserting an index.
+                    if not refined_lines:
+                        refined_lines.append('1')
+                        refined_lines.append(line)
+                    else:
+                        # orphan timestamp - skip
+                        continue
+            else:
+                refined_lines.append(line)
+        cleaned_trans = "\n".join(refined_lines)
         
         # 2. 원본에서 번호 + 타임스탬프만 추출
         origin_blocks = parse_srt_blocks(origin_content)
@@ -58,19 +100,20 @@ def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_
         for i in range(len(origin_headers)):
             num, time = origin_headers[i]
             text = trans_texts[i] if i < len(trans_texts) else ''
-            block = f"{num}\n{time}\n{text}\n"
+            block = f"{num}\n{time}\n{text}\n\n"
             merged_blocks.append(block)
-        
+
         # 저장 (trans_separate/{base}/ 에 덮어쓰기)
-        output = ''.join(merged_blocks).rstrip() + '\n\n'
+        # 각 블록 끝에 빈 줄을 두어 원본과 같은 블록 구분을 유지
+        output = ''.join(merged_blocks).rstrip() + '\n'
         trans_file.write_text(output, encoding='utf-8')
         
-        print(f"✅ 복원 완료: trans_separate/{base}/{file_path.name}")
+        print(f"[OK] 복원 완료: trans_separate/{base}/{file_path.name}")
         print(f"   (원본 블록: {len(origin_blocks)}, 번역 블록: {len(trans_blocks)})")
         return True
         
     except Exception as e:
-        print(f"❌ 오류 발생: {file_path.name} - {e}")
+        print(f"[ERROR] 오류 발생: {file_path.name} - {e}")
         return False
 
 def main():

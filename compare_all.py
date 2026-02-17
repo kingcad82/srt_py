@@ -23,6 +23,7 @@ def compare_all_files(target_path: Path, origin_dir: Path, trans_dir: Path, srt_
         base_filenames.add(base)
     
     ok_count = 0
+    ok_bases = []
     failed_bases = []
     
     for base in sorted(base_filenames):
@@ -45,18 +46,20 @@ def compare_all_files(target_path: Path, origin_dir: Path, trans_dir: Path, srt_
                     
                     delete_related_files(base, srt_home_path)
                     ok_count += 1
+                    ok_bases.append(base)
                 else:
                     print(f"→ trans/{base}에 SRT 파일 없음")
             else:
                 print(f"→ MP4 파일을 찾지 못했습니다: {base}")
                 ok_count += 1
+                ok_bases.append(base)
         else:
             failed_bases.append(base)
             print(f"→ 비교 실패: {base}")
     
     print(f"\n{'='*60}")
     print(f"compare_all 완료!")
-    print(f"성공: {ok_count}개")
+    print(f"성공: {ok_count}개 → {ok_bases}")
     if failed_bases:
         print(f"실패: {len(failed_bases)}개 → {failed_bases}")
 

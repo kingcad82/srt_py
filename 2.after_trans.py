@@ -42,7 +42,8 @@ def main():
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
-    target_path = Path(args.target) if args.target else (Path('V:/') if os.name == 'nt' else Path('/home'))
+    # 기본 MP4 검색 경로를 X: 드라이브로 변경 (Windows)
+    target_path = Path(args.target) if args.target else (Path('X:/') if os.name == 'nt' else Path('/home'))
     
     # Windows 콘솔 한글 출력 설정
     if os.name == 'nt':
@@ -50,7 +51,7 @@ def main():
         sys.stderr.reconfigure(encoding='utf-8')
     
     print("="*70)
-    print("🔄 after_trans.py 시작 (base 폴더 구조)")
+    print(">> after_trans.py 시작 (base 폴더 구조)")
     print(f"SRT_HOME     : {srt_home_path}")
     print(f"MP4 검색 경로 : {target_path}")
     print("="*70)
@@ -67,9 +68,9 @@ def main():
     print("\n[3/3] compare_all.py 실행...")
     run_command(['python', 'compare_all.py', '-t', str(target_path), '-s', str(srt_home_path)])
     
-    print("\n🎉 after_trans.py 모든 단계 완료!")
-    print("   → 최종 SRT가 MP4와 같은 폴더로 이동되었습니다.")
-    print("   → SRT_HOME 내 관련 파일/폴더가 자동 정리되었습니다.")
+    print("\n>> after_trans.py 모든 단계 완료!")
+    print("   -> 최종 SRT가 MP4와 같은 폴더로 이동되었습니다.")
+    print("   -> SRT_HOME 내 관련 파일/폴더가 자동 정리되었습니다.")
 
 if __name__ == "__main__":
     main()

@@ -62,6 +62,11 @@ def parse_srt_blocks(content):
 
 def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
     """SRT_HOME 경로 반환"""
+    # 환경변수 우선 처리 (사용자가 명시적으로 SRT_HOME을 설정한 경우)
+    env = os.environ.get('SRT_HOME') or os.environ.get('SRT_HOME_PATH')
+    if env:
+        return Path(env)
+
     if platform.system() == 'Windows':
         return Path(default_windows)
     else:
