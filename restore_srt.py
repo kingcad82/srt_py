@@ -40,7 +40,13 @@ def restore_srt_file(file_path: Path, origin_separate_dir: Path, trans_separate_
         srt_home = origin_separate_dir.parent
         trans_bak_dir = get_base_dir(srt_home / 'trans_bak', base)
         trans_bak_file = trans_bak_dir / file_path.name
-        shutil.copy(trans_file, trans_bak_file)
+        # Ensure backup directory exists
+        trans_bak_dir.mkdir(parents=True, exist_ok=True)
+        # If a backup with the same name already exists, skip copying
+        if trans_bak_file.exists():
+            print(f"백업 건너뜀: trans_bak/{base}/{file_path.name} 파일이 이미 존재합니다.")
+        else:
+            shutil.copy(trans_file, trans_bak_file)
         
         # 1. 번역 노이즈 제거
         cleaned_trans = clean_trans_text(trans_content)
