@@ -56,19 +56,24 @@ def main():
     print(f"MP4 검색 경로 : {target_path}")
     print("="*70)
     
+    # 0. organize_trans_separate.py (최우선)
+    print("\n[0/4] organize_trans_separate.py 실행...")
+    run_command(['python', 'organize_trans_separate.py', '-s', str(srt_home_path)])
+    
     # 1. restore_all.py
-    print("\n[1/3] restore_all.py 실행...")
+    print("\n[1/4] restore_all.py 실행...")
     run_command(['python', 'restore_all.py', '-s', str(srt_home_path)])
     
     # 2. merge_all.py
-    print("\n[2/3] merge_all.py 실행...")
+    print("\n[2/4] merge_all.py 실행...")
     run_command(['python', 'merge_all.py', '-s', str(srt_home_path)])
     
     # 3. compare_all.py
-    print("\n[3/3] compare_all.py 실행...")
+    print("\n[3/4] compare_all.py 실행...")
     run_command(['python', 'compare_all.py', '-t', str(target_path), '-s', str(srt_home_path)])
     
     print("\n>> after_trans.py 모든 단계 완료!")
+    print("   -> trans_separate 파일 정렬 완료")
     print("   -> 최종 SRT가 MP4와 같은 폴더로 이동되었습니다.")
     print("   -> SRT_HOME 내 관련 파일/폴더가 자동 정리되었습니다.")
 
