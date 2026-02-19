@@ -31,10 +31,23 @@ def organize_trans_separate(trans_separate_dir: Path):
             target_dir = get_base_dir(trans_separate_dir, base)
             target_file = target_dir / srt_file.name
             
-            # 같은 파일명이 이미 목표 폴더에 있으면 스킵
+            # 같은 파일명이 이미 목표 폴더에 있으면 강제로 덮어쓰기
             if target_file.exists():
-                print(f"[SKIP] {srt_file.name}")
-                print(f"       → trans_separate/{base}/{srt_file.name} 파일이 이미 존재합니다.\n")
+                try:
+                    target_file.unlink()
+                except Exception as e:
+                    print(f"[ERROR] 기존 파일 삭제 실패: {target_file} - {e}\n")
+                    failed_files.append(srt_file.name)
+                    continue
+
+                try:
+                    shutil.move(str(srt_file), str(target_file))
+                    print(f"[OVERWRITE] {srt_file.name} -> trans_separate/{base}/{srt_file.name}\n")
+                    moved_count += 1
+                except Exception as e:
+                    print(f"[ERROR] 덮어쓰기 실패: {srt_file.name} - {e}\n")
+                    failed_files.append(srt_file.name)
+
                 continue
             
             # 파일 이동
