@@ -57,9 +57,9 @@ def main():
     print("\n[2/5] rename_all.py 실행...")
     run_command(['python', 'rename_all.py', '-l', args.lang, '-s', str(srt_home_path)])
     
-    # 3. post_process_all.py
-    print("\n[3/5] post_process_all.py 실행...")
-    run_command(['python', 'post_process_all.py', '-s', str(srt_home_path)])
+    # 3. post_process_all.py (DISABLED)
+    # print("\n[3/5] post_process_all.py 실행...")
+    # run_command(['python', 'post_process_all.py', '-s', str(srt_home_path)])
     
     # 4. trim_repeats_srt.py
     print("\n[4/5] trim_repeats_srt.py 실행...")
