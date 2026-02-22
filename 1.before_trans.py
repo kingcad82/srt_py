@@ -63,7 +63,7 @@ def main():
     
     # 4. trim_repeats_srt.py
     print("\n[4/5] trim_repeats_srt.py 실행...")
-    run_command(['python', 'trim_repeats_srt.py', '-s', str(srt_home_path)])
+    run_command(['python', 'trim_repeats_srt.py', '-t', str(srt_home_path)])
     
     # 5. separate_all.py
     print("\n[5/5] separate_all.py 실행...")
