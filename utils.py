@@ -74,7 +74,7 @@ def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
 
 def clean_trans_text(text):
     """번역 텍스트에서 노이즈 제거"""
-    patterns = [r'assistant: 4s동안 생각함srt복사', r'animate-gaussian', r'Markdown', r'text', r'srt', r'복사', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    patterns = [r'assistant: 2s동안 생각함srt복사', r'assistant: 3s동안 생각함srt복사', r'assistant: 4s동안 생각함srt복사', r'animate-gaussian', r'Markdown', r'text', r'srt', r'복사', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*', r'```\s*']
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
     return text
