@@ -71,8 +71,8 @@ def process_transcribe_list(list_path, model_name, language, output_dir=None):
 
 def main():
     parser = argparse.ArgumentParser(description="대상 폴더에서 비디오 검색 후 SRT 추출 (Whisper 사용). SRT 파일 없는 비디오 대상.")
-    parser.add_argument('-t', '--target', help="검색 대상 경로 (기본: Windows V:/al/av, Linux /home)")
-    parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows V:/srt_home, Linux /home/srt_home)")
+    parser.add_argument('-t', '--target', help="검색 대상 경로 (기본: Windows X:/al/av, Linux /home)")
+    parser.add_argument('-s', '--srt_home', help="SRT_HOME 경로 (기본: Windows X:/srt_home, Linux /home/srt_home)")
     parser.add_argument('-m', '--model', default='large-v3', help="Whisper 모델 (기본: large-v3)")
     parser.add_argument('-l', '--language', default='ja', help="언어 코드 (기본: ja)")
     parser.add_argument('-o', '--output', help="출력 디렉토리 (기본: 비디오 동일 경로)")
@@ -80,7 +80,7 @@ def main():
     args = parser.parse_args()
     
     srt_home_path = Path(args.srt_home) if args.srt_home else get_srt_home()
-    target_path = Path(args.target) if args.target else (Path('V:/al/av') if os.name == 'nt' else Path('/home'))
+    target_path = Path(args.target) if args.target else (Path('X:/al/av') if os.name == 'nt' else Path('/home'))
     
     print(f"transcribe_all.py 시작")
     print(f"target 경로: {target_path}")

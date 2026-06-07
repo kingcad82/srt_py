@@ -41,10 +41,10 @@ def trim_repeats_all(process_dir, patterns_file, min_repeat, keep_repeat, keep_s
 
 def main():
     parser = argparse.ArgumentParser(description="지정 디렉토리의 SRT 파일에서 반복 패턴을 제거합니다. 기본: SRT_HOME/origin. 패턴은 SRT_HOME/patterns.txt에서 로드. 커스텀 -s 입력 시 입력 경로 직접 사용.")
-    parser.add_argument('-s', '--dir', help="처리할 디렉토리 경로 (기본: SRT_HOME/origin, 커스텀 시 입력 경로 직접, 하위 포함)")
+    parser.add_argument('-t', '--dir', help="처리할 디렉토리 경로 (기본: SRT_HOME/origin, 커스텀 시 입력 경로 직접, 하위 포함)")
     parser.add_argument('-p', '--patterns', help="패턴 파일 경로 (기본: SRT_HOME/patterns.txt)")
-    parser.add_argument('-m', '--min', type=int, default=7, help="트리밍 트리거 최소 반복 수 (기본: 7)")
-    parser.add_argument('-k', '--keep', type=int, default=3, help="남길 반복 수 (기본: 3)")
+    parser.add_argument('-m', '--min', type=int, default=3, help="트리밍 트리거 최소 반복 수 (기본: 3)")
+    parser.add_argument('-k', '--keep', type=int, default=2, help="남길 반복 수 (기본: 2)")
     parser.add_argument('--keep-space', action="store_true", help="남긴 반복 사이에 공백 유지 (기본: 없음)")
     parser.add_argument('--dry-run', action="store_true", help="변경 확인만, 실제 수정 안 함")
     args = parser.parse_args()

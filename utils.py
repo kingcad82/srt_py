@@ -62,6 +62,11 @@ def parse_srt_blocks(content):
 
 def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
     """SRT_HOME 경로 반환"""
+    # 환경변수 우선 처리 (사용자가 명시적으로 SRT_HOME을 설정한 경우)
+    env = os.environ.get('SRT_HOME') or os.environ.get('SRT_HOME_PATH')
+    if env:
+        return Path(env)
+
     if platform.system() == 'Windows':
         return Path(default_windows)
     else:
@@ -69,7 +74,7 @@ def get_srt_home(default_windows='X:/srt_home', default_linux='/home/srt_home'):
 
 def clean_trans_text(text):
     """번역 텍스트에서 노이즈 제거"""
-    patterns = [r'animate-gaussian', r'Markdown', r'text', r'srt', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*']
+    patterns = [r'assistant: 2s동안 생각함srt복사', r'assistant: 3s동안 생각함srt복사', r'assistant: 4s동안 생각함srt복사', r'animate-gaussian', r'Markdown', r'text', r'srt', r'복사', r'plain', r'assistant:\s*', r'다음 내용을 참조하세요:\s*', r'```\s*']
     for pattern in patterns:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
     return text

@@ -42,7 +42,7 @@ def main():
     target_path = Path(args.target) if args.target else (Path('V:/') if os.name == 'nt' else Path('/home'))
     
     print("="*60)
-    print("🔄 before_trans.py 시작 (base 폴더 구조)")
+    print(">> before_trans.py 시작 (base 폴더 구조)")
     print(f"SRT_HOME     : {srt_home_path}")
     print(f"검색 경로    : {target_path}")
     print(f"언어 코드    : {args.lang}")
@@ -57,20 +57,20 @@ def main():
     print("\n[2/5] rename_all.py 실행...")
     run_command(['python', 'rename_all.py', '-l', args.lang, '-s', str(srt_home_path)])
     
-    # 3. post_process_all.py
-    print("\n[3/5] post_process_all.py 실행...")
-    run_command(['python', 'post_process_all.py', '-s', str(srt_home_path)])
+    # 3. post_process_all.py (DISABLED)
+    # print("\n[3/5] post_process_all.py 실행...")
+    # run_command(['python', 'post_process_all.py', '-s', str(srt_home_path)])
     
     # 4. trim_repeats_srt.py
     print("\n[4/5] trim_repeats_srt.py 실행...")
-    run_command(['python', 'trim_repeats_srt.py', '-s', str(srt_home_path)])
+    run_command(['python', 'trim_repeats_srt.py', '-t', str(srt_home_path)])
     
     # 5. separate_all.py
     print("\n[5/5] separate_all.py 실행...")
     run_command(['python', 'separate_all.py', '-s', str(srt_home_path), '-c', str(args.chunk_size)])
     
-    print("\n🎉 before_trans.py 모든 단계 완료!")
-    print(f"   → origin_separate/base/ 폴더에 chunk 파일들이 준비되었습니다.")
+    print("\n>> before_trans.py 모든 단계 완료!")
+    print(f"   -> origin_separate/base/ 폴더에 chunk 파일들이 준비되었습니다.")
 
 if __name__ == "__main__":
     main()

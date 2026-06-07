@@ -62,7 +62,7 @@ def transcribe_srt_from_video(video_path, model_name='large-v3-turbo', language=
         
         # 오디오 추출 및 전사 (기존 코드 유지, truncated 부분 생략)
         # ... (여기서 whisper.transcribe 등 호출, 전체 코드는 문서 기반으로 유지)
-        
+        result = model.transcribe(str(video_path), language=language, task='transcribe')
         # SRT 내용 생성 (기존 코드)
         srt_content = []
         for i, segment in enumerate(result['segments'], start=1):
